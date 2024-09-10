@@ -1,4 +1,4 @@
-org:
+org: fu2023
 
 service: bonzai-booking-api
 
@@ -62,6 +62,18 @@ resources:
       Type: AWS::DynamoDB::Table
       Properties:
         TableName: bookings
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+
+    rooms:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: rooms
         AttributeDefinitions:
           - AttributeName: id
             AttributeType: S
