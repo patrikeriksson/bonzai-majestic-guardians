@@ -1,17 +1,16 @@
-org: 
+org:
 
 service: bonzai-booking-api
 
 provider:
   name: aws
   runtime: nodejs20.x
-  prifle: default
   region: eu-north-1
   deploymentMethod: direct
   iam:
     role:
       statements:
-        - Effect: 'Allow'
+        - Effect: "Allow"
           Action:
             - dynamodb:Query
             - dynamodb:Scan
@@ -19,7 +18,7 @@ provider:
             - dynamodb:PutItem
             - dynamodb:UpdateItem
             - dynamodb:DeleteItem
-          Resource: '*'
+          Resource: "*"
 
 build:
   esbuild:
@@ -36,7 +35,7 @@ functions:
           path: /bookings
           method: post
 
-  updateBooking:
+  deleteBooking:
     handler: functions/deleteBooking/index.handler
     events:
       - httpApi:
