@@ -7,7 +7,6 @@ const { validateBooking } = require("../../services/validation");
 async function checkAndUpdateRoomAvailability(selectedRooms, numberOfGuests) {
   let totalCapacity = 0; // Håller reda på den totala tillgängliga kapaciteten
 
-  // Iterera över de valda rummen
   for (const room of selectedRooms) {
     const roomId = `room#${room.type}`; // Skapa rum-ID baserat på rumstyp
     // Hämta rumdata från databasen
@@ -53,6 +52,12 @@ async function checkAndUpdateRoomAvailability(selectedRooms, numberOfGuests) {
 
 // Funktion för att skapa en bokning
 async function createBooking(bookingNumber, bookingInfo, totalAmount) {
+  // Skapa en array med rumstyper baserat på bokningsinformationen
+  const roomTypes = [];
+  if (bookingInfo.singleRoom > 0) roomTypes.push("singleRoom");
+  if (bookingInfo.doubleRoom > 0) roomTypes.push("doubleRoom");
+  if (bookingInfo.suite > 0) roomTypes.push("suite");
+
   // Spara bokningsinformation i databasen
   await db.put({
     TableName: "bookings",
@@ -65,17 +70,16 @@ async function createBooking(bookingNumber, bookingInfo, totalAmount) {
       name: bookingInfo.fullName,
       email: bookingInfo.email,
       totalAmount: totalAmount,
+      roomTypes: roomTypes,
     },
   });
 }
 
-// Lambda-funktionen
 exports.handler = async (event) => {
   try {
     const bookingInfo = JSON.parse(event.body);
     // Validera bokningsinformation
     const validationError = validateBooking(bookingInfo);
-    // Returnera fel om validering misslyckas
     if (validationError) return sendError(400, validationError);
 
     // Förbereda en lista med valda rum
@@ -112,8 +116,10 @@ exports.handler = async (event) => {
       0
     );
 
-    const bookingNumber = uuidv4(); // Generera ett unikt bokningsnummer
-    await createBooking(bookingNumber, bookingInfo, totalAmount); // Skapa bokningen i databasen
+    // Generera ett unikt bokningsnummer
+    const bookingNumber = uuidv4();
+    // Skapa bokningen i databasen
+    await createBooking(bookingNumber, bookingInfo, totalAmount);
 
     // Returnera ett svar med bokningsinformation
     return sendResponse({
@@ -122,22 +128,19 @@ exports.handler = async (event) => {
       bookingInfo: { ...bookingInfo, totalAmount },
     });
   } catch (error) {
-    // Hantera eventuella fel
     return sendError(500, error.message || "Could not create booking");
   }
 };
 
-// Funktion för att initiera rummen i databasen
+// Funktion för att initiera och lägga till rummen i databasen
 async function initializeRooms() {
   const roomsData = [
     { id: "room#singleRoom", capacity: 1, availableRooms: 4, price: 500 },
     { id: "room#doubleRoom", capacity: 2, availableRooms: 10, price: 1000 },
     { id: "room#suite", capacity: 3, availableRooms: 6, price: 1500 },
   ];
-  // Lägg till varje rum i databasen
   for (const room of roomsData)
     await db.put({ TableName: "rooms", Item: room });
 }
 
-// Anropa initializeRooms en gång för att lägga till rum i databasen
 initializeRooms();
