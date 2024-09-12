@@ -3,60 +3,58 @@ const { db } = require("../../services/db");
 const { v4: uuidv4 } = require("uuid");
 const { validateBooking } = require("../../services/validation");
 
-// Kontrollera och uppdatera rumstillgång
-async function checkAndUpdateRoomAvailability(selectedRooms, numberOfGuests) {
-  let totalCapacity = 0; // Håller reda på den totala tillgängliga kapaciteten
+// Funktion för att uppdatera rumsdatan oavsett rumstyp
+async function updateRoomAvailability(numberOfRooms) {
+  const roomId = "totalRooms"; // Ett ID som representerar totalt antal rum
+  const { Item: roomData } = await db.get({
+    TableName: "rooms",
+    Key: { id: roomId },
+  });
 
-  for (const room of selectedRooms) {
-    const roomId = `room#${room.type}`; // Skapa rum-ID baserat på rumstyp
-    // Hämta rumdata från databasen
-    const { Item: roomData } = await db.get({
-      TableName: "rooms",
-      Key: { id: roomId },
-    });
-
-    // Om rumdata inte finns
-    if (!roomData) throw new Error(`Room type ${room.type} not found`);
-    // Kontrollera om det finns tillräckligt med tillgängliga rum
-    if (roomData.availableRooms < room.requested) return false;
-
-    // Lägg till kapaciteten för de begärda rummen
-    totalCapacity += roomData.capacity * room.requested;
+  if (!roomData) {
+    throw new Error("Room data not found");
   }
 
-  // Kontrollera att den totala kapaciteten är tillräcklig för antalet gäster
-  if (totalCapacity < numberOfGuests) return false;
-
-  // Uppdatera tillgängliga rum i databasen
-  for (const room of selectedRooms) {
-    const roomId = `room#${room.type}`;
-    // Hämta rumdata igen
-    const { Item: roomData } = await db.get({
-      TableName: "rooms",
-      Key: { id: roomId },
-    });
-
-    // Uppdatera tillgängliga rum i databasen
-    await db.update({
-      TableName: "rooms",
-      Key: { id: roomId },
-      UpdateExpression: "set availableRooms = :newAvailableRooms",
-      ExpressionAttributeValues: {
-        ":newAvailableRooms": roomData.availableRooms - room.requested,
-      },
-    });
+  // Kontrollera om tillräckligt många rum finns
+  if (roomData.availableRooms < numberOfRooms) {
+    throw new Error("Not enough rooms available");
   }
 
-  return true; // Returnera true om rumstillgången är tillräcklig
+  // Uppdatera antal tillgängliga rum
+  await db.update({
+    TableName: "rooms",
+    Key: { id: roomId },
+    UpdateExpression: "set availableRooms = :newAvailableRooms",
+    ExpressionAttributeValues: {
+      ":newAvailableRooms": roomData.availableRooms - numberOfRooms,
+    },
+  });
 }
 
 // Funktion för att skapa en bokning
 async function createBooking(bookingNumber, bookingInfo, totalAmount) {
   // Skapa en array med rumstyper baserat på bokningsinformationen
   const roomTypes = [];
-  if (bookingInfo.singleRoom > 0) roomTypes.push("singleRoom");
-  if (bookingInfo.doubleRoom > 0) roomTypes.push("doubleRoom");
-  if (bookingInfo.suite > 0) roomTypes.push("suite");
+  const selectedRooms = []; // Array för ruminformation
+
+  if (bookingInfo.singleRoom > 0) {
+    roomTypes.push("singleRoom");
+    selectedRooms.push({
+      type: "singleRoom",
+      requested: bookingInfo.singleRoom,
+    });
+  }
+  if (bookingInfo.doubleRoom > 0) {
+    roomTypes.push("doubleRoom");
+    selectedRooms.push({
+      type: "doubleRoom",
+      requested: bookingInfo.doubleRoom,
+    });
+  }
+  if (bookingInfo.suite > 0) {
+    roomTypes.push("suite");
+    selectedRooms.push({ type: "suite", requested: bookingInfo.suite });
+  }
 
   // Spara bokningsinformation i databasen
   await db.put({
@@ -64,7 +62,7 @@ async function createBooking(bookingNumber, bookingInfo, totalAmount) {
     Item: {
       id: bookingNumber,
       guests: bookingInfo.numberOfGuests,
-      rooms: bookingInfo.selectedRooms,
+      rooms: selectedRooms,
       checkIn: bookingInfo.checkInDate,
       checkOut: bookingInfo.checkOutDate,
       name: bookingInfo.fullName,
@@ -78,6 +76,7 @@ async function createBooking(bookingNumber, bookingInfo, totalAmount) {
 exports.handler = async (event) => {
   try {
     const bookingInfo = JSON.parse(event.body);
+
     // Validera bokningsinformation
     const validationError = validateBooking(bookingInfo);
     if (validationError) return sendError(400, validationError);
@@ -89,17 +88,12 @@ exports.handler = async (event) => {
       { type: "suite", requested: bookingInfo.suite || 0 },
     ];
 
-    // Kontrollera och uppdatera rumstillgång
-    const isAvailable = await checkAndUpdateRoomAvailability(
-      selectedRooms,
-      bookingInfo.numberOfGuests
-    );
-    // Returnera fel om rum inte är tillgängliga
-    if (!isAvailable)
-      return sendError(
-        400,
-        "No available rooms for the specified type and guests."
-      );
+    // Beräkna totalt antal rum som bokas
+    const totalRoomsRequested =
+      bookingInfo.singleRoom + bookingInfo.doubleRoom + bookingInfo.suite;
+
+    // Uppdatera rumsdatan dynamiskt baserat på totalt antal bokade rum
+    await updateRoomAvailability(totalRoomsRequested);
 
     // Beräkna antal nätter mellan inchecknings- och utcheckningsdatum
     const numberOfNights = Math.ceil(
@@ -118,6 +112,7 @@ exports.handler = async (event) => {
 
     // Generera ett unikt bokningsnummer
     const bookingNumber = uuidv4();
+
     // Skapa bokningen i databasen
     await createBooking(bookingNumber, bookingInfo, totalAmount);
 
@@ -128,17 +123,13 @@ exports.handler = async (event) => {
       bookingInfo: { ...bookingInfo, totalAmount },
     });
   } catch (error) {
-    return sendError(500, error.message || "Could not create booking");
+    return sendError(500, "Could not create booking");
   }
 };
 
 // Funktion för att initiera och lägga till rummen i databasen
 async function initializeRooms() {
-  const roomsData = [
-    { id: "room#singleRoom", capacity: 1, availableRooms: 4, price: 500 },
-    { id: "room#doubleRoom", capacity: 2, availableRooms: 10, price: 1000 },
-    { id: "room#suite", capacity: 3, availableRooms: 6, price: 1500 },
-  ];
+  const roomsData = [{ id: "totalRooms", availableRooms: 20, capacity: 20 }];
   for (const room of roomsData)
     await db.put({ TableName: "rooms", Item: room });
 }
