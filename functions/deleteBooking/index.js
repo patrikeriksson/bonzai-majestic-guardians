@@ -1,24 +1,55 @@
 const { sendResponse, sendError } = require("../../responses/index");
-const { db } = require("../../services/db"); // Importera DynamoDB-klienten från den nyare SDK:n
+const { db } = require("../../services/db");
 
-// Lambda-funktionen för att ta bort en bokning
+// Funktion för att uppdatera rumsdatan oavsett rumstyp
+async function updateRoomAvailability(numberOfRooms) {
+  const roomId = "totalRooms"; // Ett ID som representerar totalt antal rum
+  const { Item: roomData } = await db.get({
+    TableName: "rooms",
+    Key: { id: roomId },
+  });
+
+  if (!roomData) {
+    throw new Error("Room data not found");
+  }
+
+  // Uppdatera antal tillgängliga rum
+  await db.update({
+    TableName: "rooms",
+    Key: { id: roomId },
+    UpdateExpression: "set availableRooms = :newAvailableRooms",
+    ExpressionAttributeValues: {
+      ":newAvailableRooms": roomData.availableRooms + numberOfRooms,
+    },
+    ReturnValues: "ALL_NEW", // Returnera det nya värdet efter uppdateringen
+  });
+}
+
 exports.handler = async (event) => {
-  const bookingId = event.pathParameters.id; // Hämta boknings-ID från URL:en
+  const bookingId = event.pathParameters.id;
 
   try {
-    console.log(`Trying to delete booking with ID: ${bookingId}`);
-
-    // Kontrollera om bokningen finns
+    // Hämtar bokningsinformationen från DynamoDB-tabellen
     const booking = await db.get({
       TableName: "bookings",
       Key: { id: bookingId },
     });
 
     if (!booking.Item) {
-      console.log(`Booking with ID ${bookingId} not found`);
-      // Returnera ett felmeddelande om bokningen inte finns
       return sendError(404, `Booking with ID ${bookingId} not found`);
     }
+
+    // Säkerställ att rooms är en array
+    const rooms = booking.Item.rooms;
+    if (!rooms || !Array.isArray(rooms)) {
+      throw new Error("Booking rooms data is not an array or is missing");
+    }
+
+    // Extrahera antalet rum som ska läggas till tillgängligheten igen
+    const numberOfRooms = rooms.reduce(
+      (sum, room) => sum + (room.requested || 0),
+      0
+    );
 
     // Ta bort bokningen från DynamoDB
     await db.delete({
@@ -26,13 +57,13 @@ exports.handler = async (event) => {
       Key: { id: bookingId },
     });
 
-    console.log(`Booking with ID ${bookingId} deleted successfully`);
+    // Uppdatera tillgängliga rum
+    await updateRoomAvailability(numberOfRooms);
     // Returnera ett lyckat svar
     return sendResponse({
       message: `Booking with ID ${bookingId} deleted successfully`,
     });
   } catch (error) {
-    console.error("Error deleting booking:", error);
     // Returnera ett felmeddelande vid fel
     return sendError(500, "Could not delete booking");
   }
