@@ -109,4 +109,5 @@ response:
 		"message": "Booking with ID 3b9db2ce-b414-4167-aad9-e593e2da91b2 deleted successfully"
 	}
 }
+You cannot delete a booking within 2 days of check-in.
 ```
