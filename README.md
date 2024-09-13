@@ -10,9 +10,9 @@ response:
 	"data": {
 		"bookings": [
 			{
-				"bookingNumber": "ed82cf34-d263-4ccb-80a8-80698b6a50f5",
-				"checkInDate": "2024-09-13",
-				"checkOutDate": "2024-09-14",
+				"bookingNumber": "3b9db2ce-b414-4167-aad9-e593e2da91b2",
+				"checkInDate": "2024-10-14",
+				"checkOutDate": "2024-10-15",
 				"numberOfGuests": 1,
 				"singleRoom": 1,
 				"doubleRoom": 0,
@@ -35,8 +35,8 @@ body:
   "singleRoom": 1,
   "doubleRoom": 0,
   "suite": 0,
-  "checkInDate": "2024-09-13",
-  "checkOutDate": "2024-09-14",
+  "checkInDate": "2024-10-14",
+  "checkOutDate": "2024-10-15",
   "fullName": "John Doe",
   "email": "john.doe@example.com"
 }
@@ -47,14 +47,14 @@ response:
 {
 	"data": {
 		"message": "Booking created",
-		"bookingId": "ed82cf34-d263-4ccb-80a8-80698b6a50f5",
+		"bookingId": "3b9db2ce-b414-4167-aad9-e593e2da91b2",
 		"bookingInfo": {
 			"numberOfGuests": 1,
 			"singleRoom": 1,
 			"doubleRoom": 0,
 			"suite": 0,
-			"checkInDate": "2024-09-13",
-			"checkOutDate": "2024-09-14",
+			"checkInDate": "2024-10-14",
+			"checkOutDate": "2024-10-15",
 			"fullName": "John Doe",
 			"email": "john.doe@example.com",
 			"totalAmount": 500
@@ -70,8 +70,8 @@ response:
 ```
 body:
 {
-  "numberOfGuests": 2,
-  "singleRoom": 2,
+  "numberOfGuests": 4,
+  "singleRoom": 4,
   "doubleRoom": 0,
   "suite": 0,
   "checkInDate": "2024-11-01",
@@ -81,7 +81,21 @@ body:
 
 ```
 response:
-
+{
+	"data": {
+		"message": "Booking updated",
+		"bookingId": "81ce5dd0-4443-4632-87df-72673ef1829f",
+		"updatedBookingInfo": {
+			"numberOfGuests": 4,
+			"singleRoom": 4,
+			"doubleRoom": 0,
+			"suite": 0,
+			"checkInDate": "2024-11-01",
+			"checkOutDate": "2024-11-04",
+			"totalAmount": 6000
+		}
+	}
+}
 ```
 
 ### Delete Booking
@@ -92,7 +106,7 @@ response:
 response:
 {
 	"data": {
-		"message": "Booking with ID "{id}" deleted successfully"
+		"message": "Booking with ID 3b9db2ce-b414-4167-aad9-e593e2da91b2 deleted successfully"
 	}
 }
 ```
