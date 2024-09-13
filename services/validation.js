@@ -6,7 +6,14 @@ const roomCapacity = {
 
 // Funktion för att validera bokningsdata
 function validateBooking(bookingInfo) {
-  const { singleRoom, doubleRoom, suite, numberOfGuests } = bookingInfo;
+  const {
+    singleRoom,
+    doubleRoom,
+    suite,
+    numberOfGuests,
+    checkInDate,
+    checkOutDate,
+  } = bookingInfo;
 
   // Kontrollera att rumstyperna är giltiga
   const roomTypes = [singleRoom, doubleRoom, suite];
@@ -23,6 +30,35 @@ function validateBooking(bookingInfo) {
     suite * roomCapacity.suite;
   if (numberOfGuests > totalCapacity) {
     return `Number of guests exceeds the total capacity of selected rooms`;
+  }
+
+  // Datumvalidering
+
+  // Validera datumformat, yyyy-mm-dd
+  const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+  if (!datePattern.test(checkInDate) || !datePattern.test(checkOutDate)) {
+    return "Invalid date format. Please use yyyy-mm-dd.";
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Sätt dagens datum utan tid (endast datumdelen)
+
+  const checkIn = new Date(checkInDate);
+  const checkOut = new Date(checkOutDate);
+
+  // Kontrollera att datumen är giltiga
+  if (isNaN(checkIn) || isNaN(checkOut)) {
+    return "Invalid check-in or check-out date.";
+  }
+
+  // Kontrollera att incheckningsdatumet inte är tidigare än dagens datum
+  if (checkIn < today) {
+    return "Check-in date cannot be in the past.";
+  }
+
+  // Kontrollera att utcheckningsdatumet inte är tidigare än incheckningsdatumet
+  if (checkOut <= checkIn) {
+    return "Check-out date must be after the check-in date.";
   }
 
   return null;
