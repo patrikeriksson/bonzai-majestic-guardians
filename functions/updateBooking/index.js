@@ -56,14 +56,6 @@ async function updateBooking(bookingId, updatedBookingInfo) {
     throw new Error("Booking not found");
   }
 
-  // Kontrollera om de skyddade fälten har ändrats
-  if (existingBooking.name !== updatedBookingInfo.fullName) {
-    return sendError(400, "Full name cannot be changed.");
-  }
-  if (existingBooking.email !== updatedBookingInfo.email) {
-    return sendError(400, "Email cannot be changed.");
-  }
-
   // Validera uppdaterad bokningsinformation
   const validationError = validateBooking(updatedBookingInfo);
   if (validationError) return sendError(400, validationError);
