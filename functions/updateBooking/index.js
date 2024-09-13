@@ -57,9 +57,6 @@ async function updateBooking(bookingId, updatedBookingInfo) {
   }
 
   // Kontrollera om de skyddade fälten har ändrats
-  if (existingBooking.id !== bookingId) {
-    return sendError(400, "Booking ID cannot be changed.");
-  }
   if (existingBooking.name !== updatedBookingInfo.fullName) {
     return sendError(400, "Full name cannot be changed.");
   }
