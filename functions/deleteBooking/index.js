@@ -39,6 +39,20 @@ exports.handler = async (event) => {
       return sendError(404, `Booking with ID ${bookingId} not found`);
     }
 
+    // Hämta bokningens check-in datum
+    const checkInDate = new Date(booking.Item.checkIn);
+    const currentDate = new Date();
+
+    // Beräkna skillnaden i tid mellan dagens datum och incheckningsdatumet i dagar
+    const timeDifference = Math.ceil(
+      (checkInDate - currentDate) / (1000 * 60 * 60 * 24)
+    );
+
+    // Om det är 2 dagar eller mindre kvar till ankomstdatum, returnera ett felmeddelande
+    if (timeDifference <= 2) {
+      return sendError(400, "You cannot delete a booking within 2 days of check-in.");
+    }
+
     // Säkerställ att rooms är en array
     const rooms = booking.Item.rooms;
     if (!rooms || !Array.isArray(rooms)) {
